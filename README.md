@@ -7,7 +7,7 @@ libnumeric.c -  Solving Equations Numerically
 
 In this library:  
 
-   1.Sweep method for tridiagonal equation
+   1. Sweep method for tridiagonal equation
 
    2. FFT method for Poisson equation
 
@@ -17,9 +17,10 @@ Requirements
 ---------
 1. `math` - standard C math library.  
 2. `libmesh` - essential library for mesh. <https://github.com/mark-in/libmesh/>  
-3. `libconfig` - library for pretty looking configuration files.  
-4. `FFTW3` - for Poisson equation solving. You could download it at <http://fftw.org/> or instal from repos of your distro.  
+3. `FFTW3` - for Poisson equation solving. You could download it at <http://fftw.org/> or instal from repos of your distro.  
 
+Optional  
+`libconfig` - library for pretty looking configuration files for `solver.c`.    
 Building
 --------
 

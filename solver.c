@@ -26,7 +26,7 @@ int main(int argc, char *argv[]){
 	/// Config loading 
 	config_t config;
 	config_init(&config);
-	if (config_read_file(&config, (argc==1) ? "libnumeric.cfg" : argv[1] )==CONFIG_FALSE) {
+	if (config_read_file(&config, (argc==1) ? "solver.cfg" : argv[1] )==CONFIG_FALSE) {
 		printf("Configuration problem: %s\n",config_error_text(&config));		
 		return -1;
 	}

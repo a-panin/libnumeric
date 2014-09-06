@@ -1,22 +1,22 @@
-/*	libnumeric.c -  Solving Equations Numerically		*/
-/*	In this library: 					*/
-/*	1 .Sweep method for tridiagonal equation		*/
-/*	2. FFT method for Poisson equation			*/
-/*	3. Iterative Crank-Nickolson				*/
+/******* libnumeric.c *******//*
+Copyright (C) 2014 Ivan Markin
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
-/*	Compile as:								*/
-/*	$ gcc -std=c99 -o libnumeric libnumeric.c -lm -lmesh -lconfig -lfftw3	*/
-
-/*	This edition by default uses libnumeric.cfg configuration file in working directory	*/
-/*	You can specify configuration file in first argument like: $ ./libnumeric path/to/some/file.cfg	*/
-
-#include <stdio.h>
 #include <math.h>
 #include <complex.h>
 #include <malloc.h>
 #include <mesh.h>
-#include <libconfig.h>
 #include <fftw3.h>
+
 #pragma STDC CS_LIMITED_RANGE on
 
 #define PI 3.141592653589793238462643
@@ -47,6 +47,7 @@ Complex packet (double x, double t, double x0, double sigma, double p0 ) {
 	double temp = (x-x0)/(2.*sigma); 
 	double ssigma = sigma*sigma;
 	double pp0 = p0*p0;
+	
 	Complex c = A*sigma;
 	c = cpow(c,0.5);
 	c = c * (exp(-ssigma*pp0));
@@ -67,7 +68,8 @@ Complex packet (double x, double t, double x0, double sigma, double p0 ) {
 
 
 Complex packet_framework(double x, int n, double * p) {
-	if (n >=0 && n<=4) p[n]=x;	
+	if (n >=0 && n<=4)
+		p[n]=x;	
 	return packet(p[0],p[1],p[2],p[3],p[4]);
 }
 
@@ -90,7 +92,6 @@ int solve_shrodinger_sweep(mesh * space, mesh * time, Complex * psi){
 	Complex D	= M*I;
 
 	for (dot j=0; j < time->points ; j++) {
-		
 		for (dot i=0; i < space->points ; i++) {
 			
 			a[i]=act;
@@ -129,9 +130,6 @@ int solve_shrodinger_sweep(mesh * space, mesh * time, Complex * psi){
 	return 1;
 }
 
-// End of shrodinger sweep
-
-// Start of poisson
 int solve_poisson_fft(mesh * space, Complex * rho, Complex * u){
 	
 	/*
@@ -151,19 +149,16 @@ int solve_poisson_fft(mesh * space, Complex * rho, Complex * u){
 	Complex * tmp = (Complex *) malloc ( space->points * sizeof(Complex)); 
 	//Filling
 	C[0]=1.; // !? Need for figuring out
-	for (int k=1;k< space->points; k++) {
+	for (int k=1;k< space->points; k++)
 		C[k]=dS/(cos(cC*k)-1);
-	}
 	
 	fftw_plan p;
 	p = fftw_plan_dft_1d(space->points,rho,tmp,FFTW_FORWARD,FFTW_ESTIMATE); //Use FFTW_MEASURE in Release, because it should run faster.
  
 	fftw_execute(p);
 	
-	for (int i=0; i<space->points; i++) {
+	for (int i=0; i<space->points; i++)
 		tmp[i]=tmp[i]*C[i]/space->points;
-	}
-
 
 	p = fftw_plan_dft_1d(space->points,tmp,u,FFTW_BACKWARD, FFTW_ESTIMATE); 
 
@@ -175,10 +170,6 @@ int solve_poisson_fft(mesh * space, Complex * rho, Complex * u){
 
 	return 1;
 }
-/// Poisson end
-
-
-/// Iterative Crank-Nickolson start
 
 int solve_ICN ( mesh * space, mesh * time, Complex * psi) {
 
@@ -216,68 +207,5 @@ int solve_ICN ( mesh * space, mesh * time, Complex * psi) {
 	}
 
 	return 1;
-}
-
-
-// ICN end
-
-
-int main(int argc, char *argv[]){
-
-	Complex * psi; // Wave function snapshot
-	mesh space = mesh_default;
-	mesh time = mesh_default;
-	double p[5] = {0., 0., 0., 0., 0.}; // Packet initial parameters
-	
-	/// Config loading 
-	config_t config;
-	config_init(&config);
-	if (config_read_file(&config, (argc==1) ? "libnumeric.cfg" : argv[1] )==CONFIG_FALSE) {
-		printf("Configuration problem: %s\n",config_error_text(&config));		
-		return -1;
-	}
-	
-	if (	
-	config_lookup_float(&config,"mesh.space.left",&space.left) *
-	config_lookup_float(&config,"mesh.space.right",&space.right) *	
-	config_lookup_int(&config,"mesh.space.points",&space.points) *	
-	
-	config_lookup_float(&config,"mesh.time.left",&time.left) *	
-	config_lookup_float(&config,"mesh.time.right",&time.right) *	
-	config_lookup_int(&config,"mesh.time.points",&time.points) *
-	
-	config_lookup_float(&config,"init.gauss_packet.mean",&p[2]) *	
-	config_lookup_float(&config,"init.gauss_packet.sigma",&p[3]) *	
-	config_lookup_float(&config,"init.gauss_packet.p0",&p[4]) 
-	== 0
-	) {
-		printf("Config parameters problem! Try heck points in floats!\n");
-		return -1;
-	}
-	config_destroy(&config);
-	// Config loaded
-
-
-	recalc(&space);
-	recalc(&time);
-
-
-	psi = (Complex *) malloc(space.points*sizeof(Complex)); //Include into recalc? 
-	mesh_flush(psi,&space,&packet_framework, 0, p);
-	/* Choose solving method */
-
-	//solve_shrodinger_sweep(&space, &time, psi);
-	//solve_poisson_fft(&space, psi, psi);	
-	solve_ICN(&space, &time, psi);
-	
-	/* * * * */
-
-	printf("Done, writing result...\n");
-	write_power_to_csv("results/psi.csv",psi,&space);
-	
-	// Rename to destroy!
-	destruct(&space);
-	destruct(&time);
-	return 0;
 }
 

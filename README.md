@@ -19,24 +19,17 @@ Requirements
 2. `libmesh` - essential library for mesh. <https://github.com/mark-in/libmesh/>  
 3. `FFTW3` - for Poisson equation solving. You could download it at <http://fftw.org/> or instal from repos of your distro.  
 
-Optional  
-`libconfig` - library for pretty looking configuration files for `solver.c`.    
 Building
 --------
+(`automake` will be available soon)
 
-Complie as:  
+To build as shared library:
 
-`$ gcc -std=c99 -o libnumeric libnumeric.c -lm -lmesh -lconfig -lfftw3`  
+   `$ gcc -std=c99 -lm -lmesh -lfftw3 -c -Wall -Werror -fpic libnumeric.c`  
+   `$ gcc -shared -o numeric.so libnumeric.o`  
 
-This edition by default uses `libnumeric.cfg` configuration file in working directory.  
-You can specify configuration file in first argument like:  
-`$ ./libnumeric path/to/some/file.cfg`  
+Usage example:  
+   `$ gcc -L/path/to/libnumeric -Wall -o out in.c -lnumeric`  
 
-Plotting results
---------
-
-Use graph.gnuplot script to plot some results. Run this from working directory:  
-
-`$ plot/graph.gnuplot`  
-
-Results will be stored in `results` directory in csv format.
+Then move `numeric.so` to `lib` folder and `libnumeric.h` to `include` folder.  
+If you want you may use direct include into your project.  

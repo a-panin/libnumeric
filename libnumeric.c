@@ -15,7 +15,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>. */
 #include <complex.h>
 #include <malloc.h>
 #include <mesh.h>
-#include <fftw3.h>
+#include <ffts.h>
 
 #pragma STDC CS_LIMITED_RANGE on
 
@@ -152,19 +152,19 @@ int solve_poisson_fft(mesh * space, Complex * rho, Complex * u){
 	for (int k=1;k< space->points; k++)
 		C[k]=dS/(cos(cC*k)-1);
 	
-	fftw_plan p;
-	p = fftw_plan_dft_1d(space->points,rho,tmp,FFTW_FORWARD,FFTW_ESTIMATE); //Use FFTW_MEASURE in Release, because it should run faster.
+	ffts_plan_t *p;
+	p = ffts_init_1d(space->points,POSITIVE_SIGN);
  
-	fftw_execute(p);
+	ffts_execute(p,rho,tmp);
 	
 	for (int i=0; i<space->points; i++)
 		tmp[i]=tmp[i]*C[i]/space->points;
 
-	p = fftw_plan_dft_1d(space->points,tmp,u,FFTW_BACKWARD, FFTW_ESTIMATE); 
+	p = ffts_init_1d(space->points,NEGATIVE_SIGN); 
 
-	fftw_execute(p);
+	ffts_execute(p,tmp,u);
 
-	fftw_destroy_plan(p);
+	ffts_free(p);
 	free(tmp);
 	free(C);
 

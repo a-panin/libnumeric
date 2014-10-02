@@ -17,7 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>. */
 #include <mesh.h>
 #include <fftw3.h>
 
-#pragma STDC CS_LIMITED_RANGE on
+//#pragma STDC CS_LIMITED_RANGE on
 
 #define PI 3.141592653589793238462643
 #define dPI 6.2831853071795864769252867 // 2*PI

@@ -14,7 +14,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>. */
 #include <math.h>
 #include <complex.h>
 #include <malloc.h>
-#include <mesh.h>
+#include <libmesh.h>
 #include <fftw3.h>
 
 //#pragma STDC CS_LIMITED_RANGE on

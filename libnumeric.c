@@ -44,25 +44,7 @@ Complex norm(Complex z) {
 }
 
 Complex packet (double x, double t, double x0, double sigma, double p0 ) {
-	double temp = (x-x0)/(2.*sigma); 
-	double ssigma = sigma*sigma;
-	double pp0 = p0*p0;
-	
-	Complex c = A*sigma;
-	c = cpow(c,0.5);
-	c = c * (exp(-ssigma*pp0));
-	
-	Complex c2 = ssigma+I*t/2.;
-	c2 = cpow(c2,-0.5);
-	
-	c = c*c2;
-	
-	c2 = x-2.*ssigma*p0*I;
-	c2 = (-1.)*c2*c2;
-
-	Complex c3 = 4.*ssigma + 2.*t*I;
-		
-	return c*cexp(c2/c3);
+	return sqrt( (sigma/sqrt(2 * PI ) ) /  ( pow(sigma,2) + (I*t/2.) ) ) * exp(-pow(sigma*p0,2)) * exp( -0.25*pow(x-2*I*pow(sigma*p0,2),2)/(pow(sigma,2) +(I*t/2)) );  
 }
 
 

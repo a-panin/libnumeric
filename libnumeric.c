@@ -23,7 +23,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>. */
 #define dPI 6.2831853071795864769252867 // 2*PI
 #define A 0.398942280401432677939946 // 1/sqrt(2*PI)
 
-#define CRANK_NICKOLSON_ITER 3
+#define MAX_CRANK_NICKOLSON_ITER 3
 
 typedef double complex Complex; 
 typedef int points;
@@ -46,16 +46,6 @@ Complex norm(Complex z) {
 Complex packet (double x, double t, double x0, double sigma, double p0 ) {
 	return sqrt( (sigma/sqrt(2 * PI ) ) /  ( pow(sigma,2) + (I*t/2.) ) ) * exp(-pow(sigma*p0,2)) * exp( -0.25*pow(x-2*I*pow(sigma*p0,2),2)/(pow(sigma,2) +(I*t/2)) );  
 }
-
-
-
-Complex packet_framework(double x, int n, double * p) {
-	if (n >=0 && n<=4)
-		p[n]=x;	
-	return packet(p[0],p[1],p[2],p[3],p[4]);
-}
-
-
 
 
 int solve_shrodinger_sweep(mesh * space, mesh * time, Complex * psi){

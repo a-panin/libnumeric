@@ -120,6 +120,7 @@ int solve_poisson_fft(mesh * space, Complex * rho, Complex * u){
 
 	Complex * tmp = (Complex *) malloc ( space->points * sizeof(Complex)); 
 	//Filling
+	//TODO Relace with sin-FFT
 	C[0]=1.; // !? Need for figuring out
 	for (int k=1;k< space->points; k++)
 		C[k]=dS/(cos(cC*k)-1);
@@ -181,3 +182,100 @@ int solve_ICN ( mesh * space, mesh * time, Complex * psi) {
 	return 1;
 }
 
+double mass_of(mesh * space, double * rho){
+double mass = 0.;
+for (int j=0; j < space->points; j++) 
+	mass += rho[j] * space->res; // Should be dependent of index j
+return mass;
+}
+
+
+int solve_poisson_sweep(mesh * space, double * U, Complex * psi){
+	double dx2 = space->res*space->res; //Const
+			
+	Complex *a,*b,*c, *d;
+	a = (Complex *) malloc(space->points*sizeof(Complex));
+	b = (Complex *) malloc(space->points*sizeof(Complex));
+	c = (Complex *) malloc(space->points*sizeof(Complex));
+
+	d = (Complex *) malloc(space->points*sizeof(Complex));
+	
+	// Boundary conditions
+	double M = mass_of(space, rho);
+	a[0] = 0.; b[0] = -2.; c[0] = 2.;	d[0] = dx2 * rho[0];
+	a[space->points - 1] = 1 - space->res/(2.*space->map[space->points-1]);
+	b[space->points - 1] = -2.;
+	c[space->points - 1] = 0.;
+	d[space->points - 1] = dx2 * pho[space->points-1]  - (1 + space->res/(2.*space->map[space->points-1])*M/(space->map[space->points-1] + space->res);
+
+	// Filling matrix
+		for (dot j=1; j < space->points - 1; j++) {
+			
+			a[j] = (1 - space->res/(2.*space->map[j]));
+			b[j] = 2.;
+			c[j] = (1 + space->res/(2.*space->map[j]));
+
+			d[j]=dx2 * rho[j];
+		}	
+
+		// Starting sovle
+		c[0]=c[0]/b[0];
+		d[0]=d[0]/b[0];
+
+		//Forward sweep
+		for (dot i=1; i<space->points; i++) {
+			c[i]=c[i]/(b[i]-c[i-1]*a[i]);
+		
+			d[i]=(d[i]-(d[i-1]*a[i]))/(b[i]-(c[i-1]*a[i]));
+		}
+		//Backward sweep
+		U[space->points-1]=d[space->points-1];
+		for (dot i=space->points-1; i!=0; --i) {
+			U[i]=d[i]-c[i]*U[i+1];
+		}
+
+	free(a);
+	free(b);
+	free(c);
+	
+	free(d);	
+
+	return 1;
+}
+
+
+int solve_spherically_symmetric(mesh * space, mesh * time, Complex * psi) {
+	
+	double M = time->res/(4.*space->res*space->res);
+	double T2 = time->res/2;
+	
+	Complex * psi_new; //Wave function current approximation
+	Complex * psi_old = psi;
+	psi_new = (Complex *) malloc (space->points * sizeof(Complex));
+	
+	Complex * rho = (Complex *) malloc (space->points * sizeof(Complex)); // Array for rho in potential equation (Poisson) 
+	Complex * V = (Complex *) malloc (space->points * sizeof(Complex)); // Potential
+		
+
+	for (int n=0; n< time->points; n++) {
+	 	for (int i=0; i<space->points; i++)
+			psi_new[i]=psi_old[i];
+			
+		for(int it=0; it < MAX_CRANK_NICKOLSON_ITER; it++) {
+			
+			operation_on_array(rho, psi_new, space->points, &norm); // Fill array rho with norm of psi_new by map
+			solve_sweep(space, rho, V); // for U
+
+			// Now we need to find  solution for next psi
+			for(int j=1; j< (space->points - 1); j++){ // without boundary 
+				psi_new[j]=psi_old[j]+M*I*(psi_new[j+1]+psi_new[j-1]-2.*psi_new[j]+psi_old[j+1]+psi_old[j-1]-2.*psi_old[j] ) - V[j] *T2*I*( psi_old[j]+psi_new[j] );
+			}
+
+		} // Now we have solution for n'th psi
+	
+		for(int j=1; j< space->points-1; j++) 
+			 psi[j]=psi_new[j]; 
+	}
+
+	return 1;
+}

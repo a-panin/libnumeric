@@ -35,13 +35,19 @@ typedef unsigned long int dot;
 
 double mass_of(mesh * space, double * rho) {
 	double mass = 0.0;
-	for(dot j=0; j< space->points; j++)
-		mass += rho[j];
+	
+	for (dot j=0; j< space->points; j++) {
+		mass += (rho[j] - 1.)  * space->res;
+		//printf("d_mass: %lf\n", rho[j]);
+	}
 	return mass;
 }
 
 
 int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
+	//for (int j=0; j< space->points; j++)
+	//	printf("rhO: %lf\n", rho[j]);
+
 	double dx2 = space->res*space->res; //Const
 			
 	Complex *a,*b,*c, *d;
@@ -53,6 +59,7 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	
 	// Boundary conditions
 	double M = mass_of(space, rho);
+	//printf("Mass: %lf\n", M);
 	a[0] = 0.; b[0] = -2.; c[0] = 2.;	d[0] = dx2 * rho[0];
 	a[space->points - 1] = 1 - space->res/(2.*space->map[space->points-1]);
 	b[space->points - 1] = -2.;
@@ -85,6 +92,10 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 			U[i]=d[i]-c[i]*U[i+1];
 		}
 
+	//for (int j=0; j< space->points; j++)
+	//	printf("rho after poisson: %lf\n", rho[j]);
+
+
 	free(a);
 	free(b);
 	free(c);
@@ -104,30 +115,35 @@ int solve_spherically_symmetric(mesh * space, mesh * time, Complex * psi) {
 	Complex * psi_old = psi;
 	psi_new = (Complex *) malloc (space->points * sizeof(Complex));
 	
-	double * rho = (double *) malloc(space->points * sizeof(double));
+	//double * rho = (double *) malloc(space->points * sizeof(double));
 
 	Complex * V = (Complex *) malloc (space->points * sizeof(Complex)); // Potential
-		
+	for (int j=0; j < space->points; j++) {
+		V[j] =0.0;
+	}
 
 	for (int n=0; n< time->points; n++) {
-	 	for (int i=0; i<space->points; i++)
+	 	//printf("\ntime %d: ", n);
+		// Copying old to new as 0'th approx.
+		for (int i=0; i<space->points; i++)
 			psi_new[i]=psi_old[i];
-			
+		//Starting iterations	
 		for(int it=0; it < MAX_CRANK_NICKOLSON_ITER; it++) {
 			
-			for (int j=0; j< space->points; j++)
-				rho[j] = fabs(psi[j]);
-			solve_poisson_sweep(space, V, rho); // for U
-
-			// Now we need to find  solution for next psi
-			for(int j=1; j< (space->points - 1); j++){ // without boundary 
-				psi_new[j]=psi_old[j]+M*I*(psi_new[j+1]+psi_new[j-1]-2.*psi_new[j]+psi_old[j+1]+psi_old[j-1]-2.*psi_old[j] ) - V[j] *T2*I*( psi_old[j]+psi_new[j] );
-			}
-
+			//for (int j=0; j< space->points; j++)
+			//	rho[j] = fabs(psi_new[j]);
+			
+			// Getting solution for V potential
+			//solve_poisson_sweep(space, V, rho); // for U
+			//for( int j=0; j< space->points; 
+			// Now we need to find  solution for psi at next iteration
+			for(int j=1; j< (space->points - 1); j++) 
+				///psi_new[j]=psi_old[j]+M*I*(psi_new[j+1]+psi_new[j-1]-2.*psi_new[j]+psi_old[j+1]+psi_old[j-1]-2.*psi_old[j] ) - V[j] *T2*I*( psi_old[j]+psi_new[j] );
+				psi_new[j]=psi[j] - M*I* (  (psi_old[j+1] + psi_old[j-1] - 2.*psi_old[j] ) + ( psi[j+1] + psi[j-1] -2.*psi[j] )  ) -  I * T2 * V[j] * ( psi_old[j] + psi[j] );
+			for(int j=1; j< space->points-1; j++) 
+				psi_old[j]=psi_new[j]; 
+			
 		} // Now we have solution for n'th psi
-	
-		for(int j=1; j< space->points-1; j++) 
-			 psi[j]=psi_new[j]; 
 	}
 
 	return 1;

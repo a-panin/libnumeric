@@ -137,9 +137,8 @@ int solve_spherically_symmetric(mesh * space, mesh * time, Complex * psi) {
 			//solve_poisson_sweep(space, V, rho); // for U
 			//for( int j=0; j< space->points; 
 			// Now we need to find  solution for psi at next iteration
-			for(int j=1; j< (space->points - 1); j++) 
-				///psi_new[j]=psi_old[j]+M*I*(psi_new[j+1]+psi_new[j-1]-2.*psi_new[j]+psi_old[j+1]+psi_old[j-1]-2.*psi_old[j] ) - V[j] *T2*I*( psi_old[j]+psi_new[j] );
-				psi_new[j]=psi[j] - M*I* (  (psi_old[j+1] + psi_old[j-1] - 2.*psi_old[j] ) + ( psi[j+1] + psi[j-1] -2.*psi[j] )  ) -  I * T2 * V[j] * ( psi_old[j] + psi[j] );
+			for(int j=0; j< (space->points - 1); j++) 
+				psi_new[j] = psi[j] - M*I* (  (psi_old[j+1] + psi_old[j-1 + j?0:2 ] - 2.*psi_old[j] ) + ( psi[j+1] + psi[j-1 + j?0:2] -2.*psi[j] ) + j?(1/(4.*space->res*space->map[j]) *  ( (psi_old[j+1]-psi_old[j+1]) + (psi[j+1]-psi[j+1])  ) ):0  ) -  I * T2 * V[j] * ( psi_old[j] + psi[j] );
 			for(int j=1; j< space->points-1; j++) 
 				psi_old[j]=psi_new[j]; 
 			

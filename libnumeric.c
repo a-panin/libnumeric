@@ -37,7 +37,7 @@ double mass_of(mesh * space, double * rho) {
 	double mass = 0.0;
 	
 	for (dot j=0; j< space->points; j++) {
-		mass += (rho[j] - 1.)  * space->res;
+		mass += rho[j] * space->res;
 		//printf("d_mass: %lf\n", rho[j]);
 	}
 	return mass;
@@ -130,8 +130,8 @@ int solve_spherically_symmetric(mesh * space, mesh * time, Complex * psi) {
 		//Starting iterations	
 		for(int it=0; it < MAX_CRANK_NICKOLSON_ITER; it++) {
 			
-			//for (int j=0; j< space->points; j++)
-			//	rho[j] = fabs(psi_new[j]);
+			for (int j=0; j< space->points; j++)
+				rho[j] = fabs(psi_new[j]) - 1.; //Should be average
 			
 			// Getting solution for V potential
 			//solve_poisson_sweep(space, V, rho); // for U

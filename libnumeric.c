@@ -37,7 +37,7 @@ double mass_of(mesh * space, double * rho) {
 	double mass = 0.0;
 	
 	for (dot j=0; j< space->points; j++) {
-		mass += rho[j] * space->res;
+		mass += 4*PI*space->map[j]*rho[j] * space->res;
 		//printf("d_mass: %lf\n", rho[j]);
 	}
 	return mass;

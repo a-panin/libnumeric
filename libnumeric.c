@@ -61,19 +61,20 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	double M = mass_of(space, rho);
 	//printf("Mass: %lf\n", M);
 	a[0] = 0.; b[0] = -2.; c[0] = 2.;	d[0] = dx2 * rho[0];
-	a[space->points - 1] = 1 - space->res/(2.*space->map[space->points-1]);
+
+	a[space->points - 1] = 1 - space->res/space->map[space->points-1];
 	b[space->points - 1] = -2.;
 	c[space->points - 1] = 0.;
-	d[space->points - 1] = dx2 * rho[space->points-1]  - (1 + space->res/(2.*space->map[space->points-1])*M/(space->map[space->points-1] + space->res));
+	d[space->points - 1] = dx2 * rho[space->points-1]  - (1 + space->res/(space->map[space->points-1]) * ( M /(space->map[space->points-1] + space->res) ));
 
 	// Filling matrix
 		for (dot j=1; j < space->points - 1; j++) {
 			
-			a[j] = (1 - space->res/(2.*space->map[j]));
-			b[j] = 2.;
-			c[j] = (1 + space->res/(2.*space->map[j]));
+			a[j] = 1 - space->res/space->map[j];
+			b[j] = -2.;
+			c[j] = 1 + space->res/space->map[j];
 
-			d[j]=dx2 * rho[j];
+			d[j] = dx2 * rho[j];
 		}	
 
 		// Starting sovle

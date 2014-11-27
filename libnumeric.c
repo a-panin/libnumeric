@@ -58,7 +58,7 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	d = (Complex *) malloc(space->points*sizeof(Complex));
 	
 	// Boundary conditions
-	double M = mass_of(space, rho);
+	double M = 1.; // mass_of(space, rho);
 	//printf("Mass: %lf\n", M);
 	a[0] = 0.; b[0] = -2.; c[0] = 2.;	d[0] = dx2 * rho[0];
 

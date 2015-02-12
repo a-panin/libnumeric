@@ -45,9 +45,11 @@ double mass_of(mesh * space, double * rho) {
 
 
 int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
+	printf("libnumeric: [!] Hello from C world!\n");
+
 	//for (int j=0; j< space->points; j++)
 	//	printf("rhO: %lf\n", rho[j]);
-
+	
 	double dx2 = space->res*space->res; //Const
 			
 	Complex *a,*b,*c, *d;
@@ -60,34 +62,34 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	// Boundary conditions
 	double M = 1.; // mass_of(space, rho);
 	//printf("Mass: %lf\n", M);
-	a[0] = 0.; b[0] = -2.; c[0] = 2.;	d[0] = dx2 * rho[0];
+	a[0] = 0.; b[0] = -2.; c[0] = 2.;	d[0] = 4 * dx2 * rho[0];
 
 	a[space->points - 1] = 1 - space->res/space->map[space->points-1];
 	b[space->points - 1] = -2.;
 	c[space->points - 1] = 0.;
-	d[space->points - 1] = dx2 * rho[space->points-1]  - (1 + space->res/(space->map[space->points-1]) * ( M /(space->map[space->points-1] + space->res) ));
+	d[space->points - 1] = 4 * dx2 * rho[space->points-1]  - (1 + 4*space->res/(space->map[space->points-1]) * ( M /(space->map[space->points-1] + space->res) ));
 
-	// Filling matrix
+		printf("libnumeric: [i] Filling matrix...\n");
 		for (dot j=1; j < space->points - 1; j++) {
 			
-			a[j] = 1 - space->res/space->map[j];
+			a[j] = 1 - 4 * space->res/space->map[j];
 			b[j] = -2.;
-			c[j] = 1 + space->res/space->map[j];
+			c[j] = 1 + 4 * space->res/space->map[j];
 
-			d[j] = dx2 * rho[j];
+			d[j] = 4*dx2 * rho[j];
 		}	
 
-		// Starting sovle
+		printf("libnumeric: [i] Sovling started\n");
 		c[0]=c[0]/b[0];
 		d[0]=d[0]/b[0];
 
-		//Forward sweep
+		printf("libnumeric: [i] Forward sweep\n");
 		for (dot i=1; i<space->points; i++) {
 			c[i]=c[i]/(b[i]-c[i-1]*a[i]);
 		
 			d[i]=(d[i]-(d[i-1]*a[i]))/(b[i]-(c[i-1]*a[i]));
 		}
-		//Backward sweep
+		printf("libnumeric: [i] Backward sweep\n");
 		U[space->points-1]=d[space->points-1];
 		for (dot i=space->points-1; i!=0; --i) {
 			U[i]=d[i]-c[i]*U[i+1];
@@ -96,7 +98,7 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	//for (int j=0; j< space->points; j++)
 	//	printf("rho after poisson: %lf\n", rho[j]);
 
-
+	printf("libnumeric: [+] Solving done!\n");
 	free(a);
 	free(b);
 	free(c);

@@ -30,7 +30,7 @@ typedef double complex Complex;
 typedef int points;
 
 //typedef double dim;
-typedef unsigned long int dot;
+typedef unsigned int dot;
 
 
 double mass_of(mesh * space, double * rho) {
@@ -53,30 +53,31 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	double dx2 = space->res*space->res; //Const
 			
 	Complex *a,*b,*c, *d;
-	a = (Complex *) malloc(space->points*sizeof(Complex));
-	b = (Complex *) malloc(space->points*sizeof(Complex));
-	c = (Complex *) malloc(space->points*sizeof(Complex));
+	a = (Complex *) malloc( (space->points-1)*sizeof(Complex));
+	b = (Complex *) malloc( (space->points-1)*sizeof(Complex));
+	c = (Complex *) malloc( (space->points-1)*sizeof(Complex));
 
-	d = (Complex *) malloc(space->points*sizeof(Complex));
+	d = (Complex *) malloc( (space->points-1)*sizeof(Complex));
 	
 	// Boundary conditions
 	double M = 1.; // mass_of(space, rho);
 	//printf("Mass: %lf\n", M);
-	a[0] = 0.; b[0] = -2.; c[0] = 2.;	d[0] = 4 * dx2 * rho[0];
+	U[space->points-1] = -M/space->map[space->points-1];
+	a[0] = 0.; b[0] = -2.; c[0] = 2.;	d[0] = dx2 * rho[0];
 
-	a[space->points - 1] = 1 - space->res/space->map[space->points-1];
-	b[space->points - 1] = -2.;
-	c[space->points - 1] = 0.;
-	d[space->points - 1] = 4 * dx2 * rho[space->points-1]  - (1 + 4*space->res/(space->map[space->points-1]) * ( M /(space->map[space->points-1] + space->res) ));
+	a[space->points-2] = 1 - space->res/space->map[space->points-2];
+	b[space->points-2] = -2.;
+	c[space->points-2] = 0.;
+	d[space->points-2] = dx2 * rho[space->points-2]  - (1 + space->res/(space->map[space->points-2])) * U[space->points -1];
 
 		printf("libnumeric: [i] Filling matrix...\n");
-		for (dot j=1; j < space->points - 1; j++) {
+		for (dot j=1; j < space->points - 2; j++) {
 			
-			a[j] = 1 - 4 * space->res/space->map[j];
+			a[j] = 1 - space->res/space->map[j];
 			b[j] = -2.;
-			c[j] = 1 + 4 * space->res/space->map[j];
+			c[j] = 1 + space->res/space->map[j];
 
-			d[j] = 4*dx2 * rho[j];
+			d[j] = dx2 * rho[j];
 		}	
 
 		printf("libnumeric: [i] Sovling started\n");
@@ -84,16 +85,20 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 		d[0]=d[0]/b[0];
 
 		printf("libnumeric: [i] Forward sweep\n");
-		for (dot i=1; i<space->points; i++) {
+		for (dot i=1; i<space->points-2; i++) {
 			c[i]=c[i]/(b[i]-c[i-1]*a[i]);
 		
 			d[i]=(d[i]-(d[i-1]*a[i]))/(b[i]-(c[i-1]*a[i]));
 		}
 		printf("libnumeric: [i] Backward sweep\n");
-		U[space->points-1]=d[space->points-1];
-		for (dot i=space->points-1; i!=0; --i) {
+		U[space->points-2] = d[space->points-2];
+		dot i=space->points-2; //i!=0; --i) 
+
+		do {
+			i--;
+			//printf("%u\n",i);
 			U[i]=d[i]-c[i]*U[i+1];
-		}
+		} while(i!=0);
 
 	//for (int j=0; j< space->points; j++)
 	//	printf("rho after poisson: %lf\n", rho[j]);

@@ -1,5 +1,5 @@
 /******* libnumeric.c *******//*
-Copyright (C) 2014 Ivan Markin
+Copyright (C) 2014-2015 Ivan Markin
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -11,109 +11,92 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
-//#include "libnumeric.h"
 #include <math.h>
 #include <complex.h>
 #include <malloc.h>
 #include "../libmesh/libmesh.h"
 #include <fftw3.h>
-
-//#pragma STDC CS_LIMITED_RANGE on
-
-#define PI 3.141592653589793238462643
-#define dPI 6.2831853071795864769252867 // 2*PI
-#define A 0.398942280401432677939946 // 1/sqrt(2*PI)
-
-#define MAX_CRANK_NICKOLSON_ITER 3
-
-typedef double complex Complex; 
-typedef int points;
-
-//typedef double dim;
-typedef unsigned int dot;
+#include "libnumeric.h"
 
 
 double mass_of(mesh * space, double * rho) {
+	/* Initial mass */
 	double mass = 0.0;
-	
-	for (dot j=0; j< space->points; j++) {
-		mass += 4*PI*pow(space->map[j],2)*rho[j] * space->res;
-		//printf("d_mass: %lf\n", rho[j]);
-	}
+	/* Integrating mass */
+	for (point j=0; j< space->points; j++)
+		mass += 4*PI*pow(space->map[j],2)*rho[j] * space->avg_res;
 	return mass;
 }
 
 
 int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	printf("libnumeric: [!] Hello from C world!\n");
-
-	//for (int j=0; j< space->points; j++)
-	//	printf("rhO: %lf\n", rho[j]);
-	
-	double dx2 = space->res*space->res; //Const
-			
-	Complex *a,*b,*c, *d;
-	a = (Complex *) malloc( (space->points-1)*sizeof(Complex));
-	b = (Complex *) malloc( (space->points-1)*sizeof(Complex));
-	c = (Complex *) malloc( (space->points-1)*sizeof(Complex));
-
-	d = (Complex *) malloc( (space->points-1)*sizeof(Complex));
-	
-	// Boundary conditions
+	/* Session constants */
+	double res_sq = space->avg_res*space->avg_res; 
 	double M = 1.; // mass_of(space, rho);
-	//printf("Mass: %lf\n", M);
-	U[space->points-1] = -M/space->map[space->points-1];
-	a[0] = 0.; b[0] = -2.; c[0] = 2.;	d[0] = dx2 * rho[0];
+	/* Matrix creation */		
+	Complex *a,*b,*c, *d;
+	a = (Complex *) malloc( (space->intervals)*sizeof(Complex));
+	b = (Complex *) malloc( (space->intervals)*sizeof(Complex));
+	c = (Complex *) malloc( (space->intervals)*sizeof(Complex));
 
-	a[space->points-2] = 1 - space->res/space->map[space->points-2];
+	d = (Complex *) malloc( (space->intervals)*sizeof(Complex));
+	/* Boundary conditions */
+	/*- left -*/
+	a[0] = 0.;
+	b[0] = -2.;
+	c[0] = 2.;
+	d[0] = res_sq * rho[0];
+	/*- right -*/
+	U[space->points-1] = -M/space->map[space->points-1];
+	
+	a[space->points-2] = 1 - space->avg_res/space->map[space->points-2];
 	b[space->points-2] = -2.;
 	c[space->points-2] = 0.;
-	d[space->points-2] = dx2 * rho[space->points-2]  - (1 + space->res/(space->map[space->points-2])) * U[space->points -1];
+	d[space->points-2] = res_sq * rho[space->points-2]  - (1 + space->avg_res/(space->map[space->points-2])) * U[space->points -1];
+	/* Filling matrix */
+	printf("libnumeric: [i] Filling matrix...\n");
+	for (point j=1; j < space->points - 2; j++) {
+		a[j] = 1 - space->avg_res/space->map[j];
+		b[j] = -2.;
+		c[j] = 1 + space->avg_res/space->map[j];
 
-		printf("libnumeric: [i] Filling matrix...\n");
-		for (dot j=1; j < space->points - 2; j++) {
-			
-			a[j] = 1 - space->res/space->map[j];
-			b[j] = -2.;
-			c[j] = 1 + space->res/space->map[j];
-
-			d[j] = dx2 * rho[j];
-		}	
-
-		printf("libnumeric: [i] Sovling started\n");
-		c[0]=c[0]/b[0];
-		d[0]=d[0]/b[0];
-
-		printf("libnumeric: [i] Forward sweep\n");
-		for (dot i=1; i<space->points-2; i++) {
-			c[i]=c[i]/(b[i]-c[i-1]*a[i]);
-		
-			d[i]=(d[i]-(d[i-1]*a[i]))/(b[i]-(c[i-1]*a[i]));
-		}
-		printf("libnumeric: [i] Backward sweep\n");
-		U[space->points-2] = d[space->points-2];
-		dot i=space->points-2; //i!=0; --i) 
-
-		do {
-			i--;
-			//printf("%u\n",i);
-			U[i]=d[i]-c[i]*U[i+1];
-		} while(i!=0);
-
-	//for (int j=0; j< space->points; j++)
-	//	printf("rho after poisson: %lf\n", rho[j]);
-
-	printf("libnumeric: [+] Solving done!\n");
+		d[j] = res_sq * rho[j];
+	}	
+	
+	/*= Solving =*/
+	printf("libnumeric: [i] Sovling started\n");
+	/* */
+	c[0]=c[0]/b[0];
+	d[0]=d[0]/b[0];
+	
+	/* Forward speed */
+	printf("libnumeric: [i] Forward sweep\n");
+	for (point i=1; i<space->points-2; i++) {
+		c[i]=c[i]/(b[i]-c[i-1]*a[i]);
+		d[i]=(d[i]-(d[i-1]*a[i]))/(b[i]-(c[i-1]*a[i]));
+	}
+	/* Backward sweep */
+	printf("libnumeric: [i] Backward sweep\n");
+	U[space->points-2] = d[space->points-2];
+	point i=space->points-2;
+	do {
+		i--;
+		U[i]=d[i]-c[i]*U[i+1];
+	} while(i!=0);
+	
+	/* Freeing matrix */
 	free(a);
 	free(b);
 	free(c);
 	
 	free(d);	
-
+	/* Bye */
+	printf("libnumeric: [+] Solving done!\n");
 	return 1;
 }
 
-
+/*
 int solve_spherically_symmetric(mesh * space, mesh * time, Complex * psi) {
 	
 	double M = time->res/(4.*space->res*space->res);
@@ -155,3 +138,4 @@ int solve_spherically_symmetric(mesh * space, mesh * time, Complex * psi) {
 
 	return 1;
 }
+*/

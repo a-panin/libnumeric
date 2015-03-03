@@ -34,29 +34,30 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	/* Session constants */
 	double res_sq = space->avg_res*space->avg_res; 
 	double M = 1.; // mass_of(space, rho);
+	equation n_eqs = space->points-1; // Number of equations
 	/* Matrix creation */		
 	Complex *a,*b,*c, *d;
-	a = (Complex *) malloc( (space->intervals)*sizeof(Complex));
-	b = (Complex *) malloc( (space->intervals)*sizeof(Complex));
-	c = (Complex *) malloc( (space->intervals)*sizeof(Complex));
+	a = (Complex *) malloc( n_eqs*sizeof(Complex));
+	b = (Complex *) malloc( n_eqs*sizeof(Complex));
+	c = (Complex *) malloc( n_eqs*sizeof(Complex));
 
-	d = (Complex *) malloc( (space->intervals)*sizeof(Complex));
+	d = (Complex *) malloc( n_eqs*sizeof(Complex));
 	/* Boundary conditions */
 	/*- left -*/
-	a[0] = 0.;
+	a[0] = 0.; // Always 0
 	b[0] = -2.;
 	c[0] = 2.;
 	d[0] = res_sq * rho[0];
 	/*- right -*/
-	U[space->points-1] = -M/space->map[space->points-1];
+	U[space->LAST] = -M/space->map[space->LAST];
 	
-	a[space->points-2] = 1 - space->avg_res/space->map[space->points-2];
-	b[space->points-2] = -2.;
-	c[space->points-2] = 0.;
-	d[space->points-2] = res_sq * rho[space->points-2]  - (1 + space->avg_res/(space->map[space->points-2])) * U[space->points -1];
+	a[n_eqs-1] = 1 - space->avg_res/space->map[n_eqs-1];
+	b[n_eqs-1] = -2.;
+	c[n_eqs-1] = 0.;
+	d[n_eqs-1] = res_sq * rho[n_eqs-1]  - (1 + space->avg_res/(space->map[n_eqs-1])) * U[space->LAST];
 	/* Filling matrix */
 	printf("libnumeric: [i] Filling matrix...\n");
-	for (point j=1; j < space->points - 2; j++) {
+	for (equation j=1; j < n_eqs-1; j++) {
 		a[j] = 1 - space->avg_res/space->map[j];
 		b[j] = -2.;
 		c[j] = 1 + space->avg_res/space->map[j];
@@ -66,22 +67,21 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	
 	/*= Solving =*/
 	printf("libnumeric: [i] Sovling started\n");
-	/* */
-	c[0]=c[0]/b[0];
-	d[0]=d[0]/b[0];
+	/* Initiation */
+	c[0]/=b[0];
+	d[0]/=b[0];
 	
 	/* Forward speed */
 	printf("libnumeric: [i] Forward sweep\n");
-	for (point i=1; i<space->points-2; i++) {
+	for (equation i=1; i<n_eqs; i++) {
 		c[i]=c[i]/(b[i]-c[i-1]*a[i]);
 		d[i]=(d[i]-(d[i-1]*a[i]))/(b[i]-(c[i-1]*a[i]));
 	}
 	/* Backward sweep */
 	printf("libnumeric: [i] Backward sweep\n");
-	U[space->points-2] = d[space->points-2];
-	point i=space->points-2;
-	do {
-		i--;
+	U[n_eqs-1] = d[n_eqs-1];
+	equation i=n_eqs-1;
+	do {	i--;
 		U[i]=d[i]-c[i]*U[i+1];
 	} while(i!=0);
 	

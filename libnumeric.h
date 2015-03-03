@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #define MAX_CRANK_NICKOLSON_ITER 3
 
+#define N_EQS points-1
 #define LAST points-1
 
 

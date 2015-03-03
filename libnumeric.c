@@ -28,6 +28,29 @@ double mass_of(mesh * space, double * rho) {
 	return mass;
 }
 
+int solve_tridiagonal_sweep_inplace( Complex *a, Complex *b, Complex *c, Complex *d, Complex *x, equation n_eqs) {
+	/*= Solving =*/
+	printf("libnumeric: [i] Sovling started\n");
+	/* Initiation */
+	c[0]/=b[0];
+	d[0]/=b[0];
+	
+	/* Forward speed */
+	printf("libnumeric: [i] Forward sweep\n");
+	for (equation i=1; i<n_eqs; i++) {
+		c[i]=c[i]/(b[i]-c[i-1]*a[i]);
+		d[i]=(d[i]-(d[i-1]*a[i]))/(b[i]-(c[i-1]*a[i]));
+	}
+	/* Backward sweep */
+	printf("libnumeric: [i] Backward sweep\n");
+	x[n_eqs-1] = d[n_eqs-1];
+	equation i=n_eqs-1;
+	do {	i--;
+		x[i]=d[i]-c[i]*x[i+1];
+	} while(i!=0);
+
+	return 0;
+}
 
 int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	printf("libnumeric: [!] Hello from C world!\n");
@@ -65,26 +88,7 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 		d[j] = res_sq * rho[j];
 	}	
 	
-	/*= Solving =*/
-	printf("libnumeric: [i] Sovling started\n");
-	/* Initiation */
-	c[0]/=b[0];
-	d[0]/=b[0];
-	
-	/* Forward speed */
-	printf("libnumeric: [i] Forward sweep\n");
-	for (equation i=1; i<n_eqs; i++) {
-		c[i]=c[i]/(b[i]-c[i-1]*a[i]);
-		d[i]=(d[i]-(d[i-1]*a[i]))/(b[i]-(c[i-1]*a[i]));
-	}
-	/* Backward sweep */
-	printf("libnumeric: [i] Backward sweep\n");
-	U[n_eqs-1] = d[n_eqs-1];
-	equation i=n_eqs-1;
-	do {	i--;
-		U[i]=d[i]-c[i]*U[i+1];
-	} while(i!=0);
-	
+	solve_tridiagonal_sweep_inplace(a, b, c, d, U, n_eqs);	
 	/* Freeing matrix */
 	free(a);
 	free(b);

@@ -24,4 +24,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 
 typedef point equation;
-typedef double complex Complex; 
+typedef double complex Complex;
+
+typedef struct trimatrix_t {
+	Complex a;
+	Complex b;
+	Complex c;
+	Complex d;
+} trimatrix_t; 

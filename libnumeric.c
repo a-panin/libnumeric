@@ -48,60 +48,31 @@ int _solve_tridiagonal_sweep_inplace(trimatrix_t * T, Complex *x, equation n_eqs
 	return 0;
 }
 
-<<<<<<< HEAD
 int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
-	printf("libnumeric: [!] Hello from C world!\n");
 	/* Session constants */
 	double res_sq = space->avg_res*space->avg_res; 
 	double M = 1.; // mass_of(space, rho);
-	equation n_eqs = space->points-1; // Number of equations
-	/* Matrix creation */		
-	Complex *a,*b,*c, *d;
-	a = (Complex *) malloc( n_eqs*sizeof(Complex));
-	b = (Complex *) malloc( n_eqs*sizeof(Complex));
-	c = (Complex *) malloc( n_eqs*sizeof(Complex));
-
-	d = (Complex *) malloc( n_eqs*sizeof(Complex));
-	/* Boundary conditions */
-	/*- left -*/
-	a[0] = 0.; // Always 0
-	b[0] = -2.;
-	c[0] = 2.;
-	d[0] = res_sq * rho[0];
-	/*- right -*/
+	equation n_eqs = space->points-1; //sure??// Number of equations
 	U[space->LAST] = -M/space->map[space->LAST];
 	
-	a[n_eqs-1] = 1 - space->avg_res/space->map[n_eqs-1];
-	b[n_eqs-1] = -2.;
-	c[n_eqs-1] = 0.;
-	d[n_eqs-1] = res_sq * rho[n_eqs-1]  - (1 + space->avg_res/(space->map[n_eqs-1])) * U[space->LAST];
-	/* Filling matrix */
-	printf("libnumeric: [i] Filling matrix...\n");
-	for (equation j=1; j < n_eqs-1; j++) {
-		a[j] = 1 - space->avg_res/space->map[j];
-		b[j] = -2.;
-		c[j] = 1 + space->avg_res/space->map[j];
-
-		d[j] = res_sq * rho[j];
-	}	
+	/* Matrix creation */		
+	trimatrix_t *T = (trimatrix_t *) malloc( n_eqs * sizeof(trimatrix_t));
+	/* Boundary conditions */
+	/*- left -*/
+	T[0] = (trimatrix_t) { 0., -2., 2., res_sq * rho[0] };
+	/*- right -*/
+	T[n_eqs-1] = (trimatrix_t) { 1.- space->avg_res/space->map[n_eqs-1], -2., 0., res_sq * rho[n_eqs-1] - (1 + space->avg_res/(space->map[n_eqs-1])) * U[space->LAST] };
+	for (equation j=1; j < n_eqs-1; j++) 
+		T[j] = (trimatrix_t){ 1. - space->avg_res/space->map[j], -2., 1. + space->avg_res/space->map[j], res_sq * rho[j] };
 	
-	solve_tridiagonal_sweep_inplace(a, b, c, d, U, n_eqs);	
+	_solve_tridiagonal_sweep_inplace(T, U, n_eqs);	
+
 	U[0] = 3.*U[1] - 3.*U[2] + U[3];
 	/* Freeing matrix */
-	free(a);
-	free(b);
-	free(c);
-	
-	free(d);	
-	/* Bye */
-	printf("libnumeric: [+] Solving done!\n");
+	free(T);
 	return 1;
 }
 int solve_poisson_sweep_convars(mesh * space, Complex * V, double * rho){
-	printf("libnumeric: [!] Hello from C world!\n");
-=======
-int solve_poisson_sweep_convars(mesh * space, Complex * V, double * rho){
->>>>>>> cmpct-tri
 	/* Session constants */
 	double res_sq = space->avg_res*space->avg_res; 
 	double M = 1.; // mass_of(space, rho);

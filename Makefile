@@ -13,3 +13,5 @@ libnumeric.o: libnumeric.c
 clean:
 	rm -rf *o numeric.so
 
+remake:
+	make clean && make

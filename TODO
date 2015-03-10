@@ -1,5 +1,8 @@
 1. Tests
 
+sweep should take matrix of coefficients of input
+
+
 2. Shrodingers eq. with analytical conditions
 3. Poisson eq. with nontrivial conditions for simple function
 4. Compare with large space step

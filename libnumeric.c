@@ -1,5 +1,5 @@
 /******* libnumeric.c *******//*
-Copyright (C) 2014 Ivan Markin
+Copyright (C) 2014-2015 Ivan Markin
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -14,180 +14,131 @@ along with this program. If not, see <http://www.gnu.org/licenses/>. */
 #include <math.h>
 #include <complex.h>
 #include <malloc.h>
-#include <libmesh.h>
+#include "../libmesh/libmesh.h"
 #include <fftw3.h>
+#include "libnumeric.h"
 
-//#pragma STDC CS_LIMITED_RANGE on
 
-#define PI 3.141592653589793238462643
-#define dPI 6.2831853071795864769252867 // 2*PI
-#define A 0.398942280401432677939946 // 1/sqrt(2*PI)
-
-#define CRANK_NICKOLSON_ITER 3
-
-typedef double complex Complex; 
-typedef int points;
-
-//typedef double dim;
-typedef unsigned long int dot;
-
-void operation_on_array (Complex * child, Complex * parent, int size, Complex (*f) (Complex)) {
-	for (int i=0; i < size; i++) {
-		child[i] = (*f) ( parent[i]); 	
-	}
+double mass_of(mesh * space, double * rho) {
+	/* Initial mass */
+	double mass = 0.0;
+	/* Integrating mass */
+	for (point j=0; j< space->points; j++)
+		mass += 4*PI*pow(space->map[j],2)*rho[j] * space->avg_res;
+	return mass;
 }
 
-
-//inline ?
-Complex norm(Complex z) {
-	return pow(cabs(z),2.);
-}
-
-Complex packet (double x, double t, double x0, double sigma, double p0 ) {
-	return sqrt( (sigma/sqrt(2 * PI ) ) /  ( pow(sigma,2) + (I*t/2.) ) ) * exp(-pow(sigma*p0,2)) * exp( -0.25*pow(x-2*I*pow(sigma*p0,2),2)/(pow(sigma,2) +(I*t/2)) );  
-}
-
-
-
-Complex packet_framework(double x, int n, double * p) {
-	if (n >=0 && n<=4)
-		p[n]=x;	
-	return packet(p[0],p[1],p[2],p[3],p[4]);
-}
-
-
-
-
-int solve_shrodinger_sweep(mesh * space, mesh * time, Complex * psi){
-	double M = 2.*(space->res*space->res)/time->res; //Const
-			
-	Complex *a,*b,*c, *d;
-	a = (Complex *) malloc(space->points*sizeof(Complex));
-	b = (Complex *) malloc(space->points*sizeof(Complex));
-	c = (Complex *) malloc(space->points*sizeof(Complex));
-
-	d = (Complex *) malloc(space->points*sizeof(Complex));
-
-
-	Complex act	= 1.;
-	Complex bt	= -2.+M*I;
-	Complex D	= M*I;
-
-	for (dot j=0; j < time->points ; j++) {
-		for (dot i=0; i < space->points ; i++) {
-			
-			a[i]=act;
-			b[i]=bt;
-			c[i]=act;
-
-			d[i]=D*psi[i];
-		}	
-		// Boundary conditions should initial boundaries of psi :
-		a[0]=a[0]*(0.+0.*I); /// Boundary conds !!! psi[0]
-		c[space->points-1]=c[space->points-1]*(0.+0.*I); /// Boundary conds !!! psi[space->points-1]
-
-
-		c[0]=c[0]/b[0];
-		d[0]=d[0]/b[0];
-
-		//Forward sweep
-		for (dot i=1; i<space->points; i++) {
-			c[i]=c[i]/(b[i]-c[i-1]*a[i]);
-		
-			d[i]=(d[i]-(d[i-1]*a[i]))/(b[i]-(c[i-1]*a[i]));
-		}
-		//Backward sweep
-		psi[space->points-1]=d[space->points-1];
-		for (dot i=space->points-1; i!=0; --i) {
-			psi[i]=d[i]-c[i]*psi[i+1];
-		}
-	}
-
-	free(a);
-	free(b);
-	free(c);
+int _solve_tridiagonal_sweep_inplace(trimatrix_t * T, Complex *x, equation n_eqs) {
+	/* Initiation */
+	T[0].c/=T[0].b;
+	T[0].d/=T[0].b;
 	
-	free(d);	
+	/* Forward speed */
+	for (equation i=1; i<n_eqs; i++) {
+		T[i].c = T[i].c/(T[i].b-T[i-1].c*T[i].a);
+		T[i].d = (T[i].d-(T[i-1].d*T[i].a))/(T[i].b-(T[i-1].c*T[i].a));
+	}
+	/* Backward sweep */
+	x[n_eqs-1] = T[n_eqs-1].d;
+	equation i=n_eqs-1;
+	do {	i--;
+		x[i] = T[i].d-T[i].c*x[i+1];
+	} while(i!=0);
 
+	return 0;
+}
+
+int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
+	/* Session constants */
+	double res_sq = space->avg_res*space->avg_res; 
+	double M = 1.; // mass_of(space, rho);
+	equation n_eqs = space->points-1; //sure??// Number of equations
+	U[space->LAST] = -M/space->map[space->LAST];
+	
+	/* Matrix creation */		
+	trimatrix_t *T = (trimatrix_t *) malloc( n_eqs * sizeof(trimatrix_t));
+	/* Boundary conditions */
+	/*- left -*/
+	T[0] = (trimatrix_t) { 0., -2., 2., res_sq * rho[0] };
+	/*- right -*/
+	T[n_eqs-1] = (trimatrix_t) { 1.- space->avg_res/space->map[n_eqs-1], -2., 0., res_sq * rho[n_eqs-1] - (1 + space->avg_res/(space->map[n_eqs-1])) * U[space->LAST] };
+	for (equation j=1; j < n_eqs-1; j++) 
+		T[j] = (trimatrix_t){ 1. - space->avg_res/space->map[j], -2., 1. + space->avg_res/space->map[j], res_sq * rho[j] };
+	
+	_solve_tridiagonal_sweep_inplace(T, U, n_eqs);	
+
+	U[0] = 3.*U[1] - 3.*U[2] + U[3];
+	/* Freeing matrix */
+	free(T);
+	return 1;
+}
+int solve_poisson_sweep_convars(mesh * space, Complex * V, double * rho){
+	/* Session constants */
+	double res_sq = space->avg_res*space->avg_res; 
+	double M = 1.; // mass_of(space, rho);
+	equation n_eqs = space->points-2; //sure??// Number of equations
+	
+	V[space->LAST] = -M;
+	/* Matrix creation */		
+	trimatrix_t *T = (trimatrix_t *) malloc( n_eqs * sizeof(trimatrix_t));
+	/* Boundary conditions */
+	/*- left -*/
+	T[0] = (trimatrix_t) { 0., -2., 1., res_sq * rho[1] };
+	/*- right -*/
+	T[n_eqs-1] = (trimatrix_t) { 1., -2., 0., res_sq * rho[space->points-2] - V[space->LAST] };
+	/* Filling matrix */
+	for (equation j=1; j < n_eqs-1; j++) 
+		T[j] = (trimatrix_t){ 1., -2., 1., res_sq * rho[j+1] };
+	
+	_solve_tridiagonal_sweep_inplace(T, V, n_eqs);	
+
+	V[0] = 3.*V[1] - 3.*V[2] + V[3];
+	
+	/* Freeing matrix */
+	free(T);
 	return 1;
 }
 
-int solve_poisson_fft(mesh * space, Complex * rho, Complex * u){
+/*
+int solve_spherically_symmetric(mesh * space, mesh * time, Complex * psi) {
 	
-	/*
-	Alternatively, if you have a C compiler (such as gcc) that supports the C99 revision of the
-	ANSI C standard, you can use C’s new native complex type (which is binary-compatible
-	with the typedef above). In particular, if you #include <complex.h> before <fftw3.h>,
-	then fftw_complex is defined to be the native complex type and you can manipulate it
-	with ordinary arithmetic (e.g. x = y * (3+4*I), where x and y are fftw_complex and I is
-	the standard symbol for the imaginary unit);
-	*/
-	
-	
-	double dS=(space->res*space->res)/2.; 
-	double cC = dPI/space->points; //cosine coeff
-	double *C = (double *) malloc(sizeof(double) * space->points); ///Coefficient array
-
-	Complex * tmp = (Complex *) malloc ( space->points * sizeof(Complex)); 
-	//Filling
-	C[0]=1.; // !? Need for figuring out
-	for (int k=1;k< space->points; k++)
-		C[k]=dS/(cos(cC*k)-1);
-	
-	fftw_plan p;
-	p = fftw_plan_dft_1d(space->points,rho,tmp,FFTW_FORWARD,FFTW_ESTIMATE); //Use FFTW_MEASURE in Release, because it should run faster.
- 
-	fftw_execute(p);
-	
-	for (int i=0; i<space->points; i++)
-		tmp[i]=tmp[i]*C[i]/space->points;
-
-	p = fftw_plan_dft_1d(space->points,tmp,u,FFTW_BACKWARD, FFTW_ESTIMATE); 
-
-	fftw_execute(p);
-
-	fftw_destroy_plan(p);
-	free(tmp);
-	free(C);
-
-	return 1;
-}
-
-int solve_ICN ( mesh * space, mesh * time, Complex * psi) {
-
-
 	double M = time->res/(4.*space->res*space->res);
 	double T2 = time->res/2;
 	
-	Complex * psi_apx; //Wave function current approximation
-	psi_apx = (Complex *) malloc (space->points * sizeof(Complex));
+	Complex * psi_new; //Wave function current approximation
+	Complex * psi_old = psi;
+	psi_new = (Complex *) malloc (space->points * sizeof(Complex));
 	
-	Complex * rho = (Complex *) malloc (space->points * sizeof(Complex)); // Array for rho in potential equation (Poisson) 
+	//double * rho = (double *) malloc(space->points * sizeof(double));
+
 	Complex * V = (Complex *) malloc (space->points * sizeof(Complex)); // Potential
-		
+	for (int j=0; j < space->points; j++) {
+		V[j] =0.0;
+	}
 
 	for (int n=0; n< time->points; n++) {
-	 	for (int i=0; i<space->points; i++) {
-			psi_apx[i]=psi[i];
-		}
-	
-		for(int it=0; it < CRANK_NICKOLSON_ITER; it++) {
+	 	//printf("\ntime %d: ", n);
+		// Copying old to new as 0'th approx.
+		for (int i=0; i<space->points; i++)
+			psi_new[i]=psi_old[i];
+		//Starting iterations	
+		for(int it=0; it < MAX_CRANK_NICKOLSON_ITER; it++) {
 			
-			operation_on_array(rho, psi_apx, space->points, &norm);
-			solve_poisson_fft(space, rho, V); 
-
-			// Now we need to find  solution for next psi
-			for(int j=1; j< (space->points - 1); j++){ // without boundary 
-				psi_apx[j]=psi[j]+M*I*(psi_apx[j+1]+psi_apx[j-1]-2.*psi_apx[j]+psi[j+1]+psi[j-1]-2.*psi[j] ) - V[j] *T2*I*( psi[j]+psi_apx[j] );
-			}
-
+			//for (int j=0; j< space->points; j++)
+			//	rho[j] = fabs(psi_new[j]) - 1.; //Should be average
+			
+			// Getting solution for V potential
+			//solve_poisson_sweep(space, V, rho); // for U
+			//for( int j=0; j< space->points; 
+			// Now we need to find  solution for psi at next iteration
+			for(int j=0; j< (space->points - 1); j++) 
+				psi_new[j] = psi[j] - M*I* (  (psi_old[j+1] + psi_old[j-1 + j?0:2 ] - 2.*psi_old[j] ) + ( psi[j+1] + psi[j-1 + j?0:2] -2.*psi[j] ) + j?(1/(2.*space->res*space->map[j]) *  ( (psi_old[j+1]-psi_old[j-1]) + (psi[j+1]-psi[j-1])  ) ):0  ) -  I * T2 * V[j] * ( psi_old[j] + psi[j] );
+			for(int j=1; j< space->points-1; j++) 
+				psi_old[j]=psi_new[j]; 
+			
 		} // Now we have solution for n'th psi
-	
-		for(int j=1; j< space->points-1; j++) {
-				 psi[j]=psi_apx[j]; 
-		};
 	}
 
 	return 1;
 }
-
+*/

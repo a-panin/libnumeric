@@ -100,7 +100,7 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	printf("libnumeric: [+] Solving done!\n");
 	return 1;
 }
-int solve_poisson_sweep_convar(mesh * space, Complex * V, double * rho){
+int solve_poisson_sweep_convars(mesh * space, Complex * V, double * rho){
 	printf("libnumeric: [!] Hello from C world!\n");
 	/* Session constants */
 	double res_sq = space->avg_res*space->avg_res; 

@@ -48,7 +48,7 @@ int _solve_tridiagonal_sweep_inplace(trimatrix_t * T, Complex *x, equation n_eqs
 	return 0;
 }
 
-int solve_poisson_sweep_convar(mesh * space, Complex * V, double * rho){
+int solve_poisson_sweep_convars(mesh * space, Complex * V, double * rho){
 	/* Session constants */
 	double res_sq = space->avg_res*space->avg_res; 
 	double M = 1.; // mass_of(space, rho);

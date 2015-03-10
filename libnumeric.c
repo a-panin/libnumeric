@@ -89,6 +89,7 @@ int solve_poisson_sweep(mesh * space, Complex * U, double * rho){
 	}	
 	
 	solve_tridiagonal_sweep_inplace(a, b, c, d, U, n_eqs);	
+	U[0] = 3.*U[1] - 3.*U[2] + U[3];
 	/* Freeing matrix */
 	free(a);
 	free(b);

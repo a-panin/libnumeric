@@ -99,7 +99,7 @@ int solve_poisson_sweep_convars(mesh * space, Complex * V, double * rho){
 	return 1;
 }
 
-int solve_shroedinger_sweep_convars(mesh * space, mesh * time, Complex * phi, Complex * V, Complex psi_0 ){
+int solve_shroedinger_sweep_convars(mesh * space, mesh * time, Complex * phi, Complex * V, Complex * psi_0 ){
 	/* Session constants */
 	double s_res_sq = space->avg_res*space->avg_res; 
 	double s2_t_res = 4.*s_res_sq/time->res;

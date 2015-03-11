@@ -102,15 +102,15 @@ int solve_poisson_sweep_convars(mesh * space, Complex * V, double * rho){
 int solve_shroedinger_sweep_convars(mesh * space, mesh * time, Complex * phi, Complex * V, Complex * psi_0 ){
 	/* Session constants */
 	double s_res_sq = space->avg_res*space->avg_res; 
-	double s2_t_res = 4.*s_res_sq/time->res;
+	double s2_t_res = 4.*s_res_sq/time->avg_res;
 	equation n_eqs = time->points-2;
 	
 	/* Matrix creation */		
 	trimatrix_t *T = (trimatrix_t *) malloc( n_eqs * sizeof(trimatrix_t));
 	/* Filling matrix */
 	for (int j=1; j <= n_eqs; j++) 
-		T[j-1] = (trimatrix_t){ 1., 2.(1.- s_res_sq*V[j]/space->map[j]), 1. + I*s2_t_res,
-					I*s2_t_res*phi[j] - (phi[j-1] -2.*phi[j] + phi[j+1]) + 2.*s_res_sq * V[j]/space.map[j] * phi[j] + 4.*s_res_sq*V[j]*psi_0[j] };
+		T[j-1] = (trimatrix_t){ 1., 2.*(1.- s_res_sq*V[j]/space->map[j]), 1. + I*s2_t_res,
+					I*s2_t_res*phi[j] - (phi[j-1] -2.*phi[j] + phi[j+1]) + 2.*s_res_sq * V[j]/space->map[j] * phi[j] + 4.*s_res_sq*V[j]*psi_0[j] };
 	/* Boundary conditions */
 	/*- left -*/
 	T[0].d -= T[0].a * phi[0];

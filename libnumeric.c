@@ -99,7 +99,7 @@ int solve_poisson_sweep_convars(mesh * space, Complex * V, double * rho){
 	return 1;
 }
 
-int solve_shroedinger_sweep_convars(mesh * space, mesh * time, Complex * phi, Complex * V, Complex * psi_0 ){
+int solve_shroedinger_sweep_convars(mesh * space, mesh * time, Complex * phi, Complex * V, Complex psi_0 ){
 	/* Session constants */
 	double s_res_sq = space->avg_res*space->avg_res; 
 	double s2_t_res = 4.*s_res_sq/time->avg_res;
@@ -111,7 +111,7 @@ int solve_shroedinger_sweep_convars(mesh * space, mesh * time, Complex * phi, Co
 	/* Filling matrix */
 	for (int j=1; j <= n_eqs; j++) 
 		T[j-1] = (trimatrix_t){ 1., -2.*(1. + s_res_sq*V[j]/space->map[j]) + I*s2_t_res, 1.,
-					I*s2_t_res*phi[j] - (phi[j-1] -2.*phi[j] + phi[j+1]) + 2.*s_res_sq * V[j]/space->map[j] * phi[j] + 4.*s_res_sq*V[j]*psi_0[j] };
+					I*s2_t_res*phi[j] - (phi[j-1] -2.*phi[j] + phi[j+1]) + 2.*s_res_sq * V[j]/space->map[j] * phi[j] + 4.*s_res_sq*V[j]*psi_0 };
 	fprintf(stderr, "boundary\n");	
 	/* Boundary conditions */
 	/*- left -*/

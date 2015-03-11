@@ -90,9 +90,9 @@ int solve_poisson_sweep_convars(mesh * space, Complex * V, double * rho){
 	for (equation j=1; j < n_eqs-1; j++) 
 		T[j] = (trimatrix_t){ 1., -2., 1., res_sq * rho[j+1] };
 	
-	_solve_tridiagonal_sweep_inplace(T, V, n_eqs);	
+	_solve_tridiagonal_sweep_inplace(T, V+1, n_eqs);	
 
-	V[0] = 3.*V[1] - 3.*V[2] + V[3];
+	V[0] = 0.;
 	
 	/* Freeing matrix */
 	free(T);

@@ -103,22 +103,23 @@ int solve_shroedinger_sweep_convars(mesh * space, mesh * time, Complex * phi, Co
 	/* Session constants */
 	double s_res_sq = space->avg_res*space->avg_res; 
 	double s2_t_res = 4.*s_res_sq/time->avg_res;
-	equation n_eqs = time->points-2;
+	equation n_eqs = space->points-2;
 	
 	/* Matrix creation */		
 	trimatrix_t *T = (trimatrix_t *) malloc( n_eqs * sizeof(trimatrix_t));
+	fprintf(stderr, "malloced\n");	
 	/* Filling matrix */
 	for (int j=1; j <= n_eqs; j++) 
-		T[j-1] = (trimatrix_t){ 1., 2.*(1.- s_res_sq*V[j]/space->map[j]), 1. + I*s2_t_res,
+		T[j-1] = (trimatrix_t){ 1., -2.*(1. + s_res_sq*V[j]/space->map[j]) + I*s2_t_res, 1.,
 					I*s2_t_res*phi[j] - (phi[j-1] -2.*phi[j] + phi[j+1]) + 2.*s_res_sq * V[j]/space->map[j] * phi[j] + 4.*s_res_sq*V[j]*psi_0[j] };
+	fprintf(stderr, "boundary\n");	
 	/* Boundary conditions */
 	/*- left -*/
 	T[0].d -= T[0].a * phi[0];
 	T[0].a = 0.;
 	/*- right -*/
-	T[n_eqs-1].d -= T[n_eqs-1].c * phi[time->points];
+	T[n_eqs-1].d -= T[n_eqs-1].c * phi[space->points-1];
 	T[n_eqs-1].c = 0.;
-	
 	_solve_tridiagonal_sweep_inplace(T, phi+1, n_eqs);	
 	
 	/* Freeing matrix */
